@@ -13,7 +13,7 @@ public class Client {
              BufferedReader in = new BufferedReader(new InputStreamReader(socket.getInputStream()))) {
 
             // Enviar el identificador de servicio
-            out.println("1");
+            out.println("3");
 
             // Leer la respuesta
             String response = in.readLine();
