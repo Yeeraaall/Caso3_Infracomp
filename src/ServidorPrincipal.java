@@ -54,7 +54,7 @@ public class ServidorPrincipal {
 
                 // Validar HMAC
                 String mensaje = "Solicitar: " + servicioId;
-                if (!hmacCliente.equals(ManejadorDeCifrado.generarHMAC(nn, mensaje.getBytes()))) {
+                if (!hmacCliente.equals(ManejadorDeCifrado.generarHMAC("aca debería ir la clave secreta", mensaje.getBytes()))) { //claveeeeee errorrrr
                     output.writeUTF("Error en la consulta");
                     return;
                 }
