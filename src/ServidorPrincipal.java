@@ -1,6 +1,7 @@
 import java.io.*;
 import java.net.*;
 import java.util.*;
+import javax.crypto.spec.SecretKeySpec;
 
 public class ServidorPrincipal {
 
@@ -10,7 +11,7 @@ public class ServidorPrincipal {
         try {
             ServerSocket serverSocket = new ServerSocket(4000);
             System.out.println("Servidor principal esperando conexiones...");
-            
+
             // Definir servicios disponibles
             servicios.put("S1", "Estado de vuelo");
             servicios.put("S2", "Disponibilidad de vuelos");
@@ -54,7 +55,19 @@ public class ServidorPrincipal {
 
                 // Validar HMAC
                 String mensaje = "Solicitar: " + servicioId;
-                if (!hmacCliente.equals(ManejadorDeCifrado.generarHMAC("aca debería ir la clave secreta", mensaje.getBytes()))) { //claveeeeee errorrrr
+
+                // Suponiendo que la clave secreta es un String:
+                String claveSecreta = "aca debería ir la clave secreta";
+
+                // se convierte en bytes
+                byte[] claveSecretaBytes = claveSecreta.getBytes();
+
+                // Creamos una SecretKey con esos bytes
+                SecretKeySpec secretKeySpec = new SecretKeySpec(claveSecretaBytes, "HmacSHA256");
+
+                if (!hmacCliente.equals(
+                        Base64.getEncoder()
+                                .encodeToString(ManejadorDeCifrado.generarHMAC(secretKeySpec, mensaje.getBytes())))) {
                     output.writeUTF("Error en la consulta");
                     return;
                 }
@@ -76,4 +89,3 @@ public class ServidorPrincipal {
         }
     }
 }
-
