@@ -15,35 +15,44 @@ public class ServidorPrincipal {
     private static final int PORT = 4000;
 
     // Nombre de archivos
-    private static final String DATA_DIR          = "datos";
+    private static final String DATA_DIR   = "datos";
     private static final String SERVICES_FILE = "Servicios.txt";
     private static final String PRIVATE_KEY_FILE = "server_private.key";
+
+    
 
     // Mapa de servicios: id → [descripción, IP, puerto]
     private static Map<String, String[]> servicios = new HashMap<>();
 
     public static void main(String[] args) throws Exception {
-        // Cargar tabla de servicios
-        for (String línea : Files.readAllLines(Paths.get(SERVICES_FILE))) {
-            if (línea.trim().isEmpty()) continue;
-            String[] partes = línea.split(",", 4);
-            // partes = { id, descripción, ip, puerto }
-            servicios.put(partes[0], new String[]{partes[1], partes[2], partes[3]});
-        }
 
-        // Cargar llave privada RSA
-        String pkcs8 = new String(Files.readAllBytes(Paths.get(PRIVATE_KEY_FILE)), "UTF-8").trim();
-        PrivateKey serverPriv = ManejadorDeCifrado.generarLlavePrivada(pkcs8);
+  // Obtener la ruta completa utilizando File.separator
+  Path serviciosPath = Paths.get(DATA_DIR, SERVICES_FILE);
+  System.out.println("Ruta de Servicios.txt: " + serviciosPath.toAbsolutePath().toString()); // Imprimir la ruta completa
 
-        ServerSocket serverSocket = new ServerSocket(PORT);
-        System.out.println("Servidor principal escuchando en puerto " + PORT);
+  // Cargar tabla de servicios
+  for (String línea : Files.readAllLines(serviciosPath)) {
+      if (línea.trim().isEmpty()) continue;
+      String[] partes = línea.split(",", 4);
+      // partes = { id, descripción, ip, puerto }
+      servicios.put(partes[0], new String[]{partes[1], partes[2], partes[3]});
+  }
 
-        while (true) {
-            Socket sock = serverSocket.accept();
-            System.out.println("→ Nueva conexión de " + sock.getRemoteSocketAddress());
-            new ClienteHandler(sock, serverPriv).start();
-        }
-    }
+  // Cargar llave privada RSA
+  Path privateKeyPath = Paths.get(DATA_DIR, PRIVATE_KEY_FILE);
+  String pkcs8 = new String(Files.readAllBytes(privateKeyPath), "UTF-8").trim();
+  PrivateKey serverPriv = ManejadorDeCifrado.generarLlavePrivada(pkcs8);
+
+  ServerSocket serverSocket = new ServerSocket(PORT);
+  System.out.println("Servidor principal escuchando en puerto " + PORT);
+
+  while (true) {
+      Socket sock = serverSocket.accept();
+      System.out.println("→ Nueva conexión de " + sock.getRemoteSocketAddress());
+      new ClienteHandler(sock, serverPriv).start();
+  }
+
+}
 
     static class ClienteHandler extends Thread {
         private Socket sock;
@@ -185,9 +194,11 @@ public class ServidorPrincipal {
                 }
 
                 // 8) — Descifrar petición y extraer serviceId
+                
                 cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(ivReq));
                 String serviceId = new String(cipher.doFinal(cReq), "UTF-8").trim();
-                System.out.println("  → Cliente solicitó: " + serviceId);
+
+                System.out.println("→ Solicitud recibida para servicio: " + serviceId); //depuración
 
                 // 9) — Delegar consulta (conexión plana)
                 String[] info = servicios.getOrDefault(serviceId, new String[]{"","-1","-1"});

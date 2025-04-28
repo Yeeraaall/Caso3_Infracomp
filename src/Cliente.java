@@ -132,6 +132,8 @@ public class Cliente {
         out.writeInt(hReq.length);
         out.write(hReq);
         out.flush();
+        System.out.println("→ Petición enviada al servidor: " + serviceId);
+
 
         //
         // 8) Recibir y procesar la respuesta cifrada
@@ -161,6 +163,8 @@ public class Cliente {
 
         cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(iv3));
         String respuesta = new String(cipher.doFinal(c3), "UTF-8");
+        System.out.println("→ Respuesta recibida: " + respuesta);
+
         System.out.println("→ Respuesta del servicio: " + respuesta);
 
         sock.close();
