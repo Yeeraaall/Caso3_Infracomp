@@ -31,6 +31,7 @@ public class Cliente {
 
         // Menú para elegir el escenario
         Scanner scanner = new Scanner(System.in);
+        System.out.println("---------------------------------- Bienvenidx -----------------------------");
         System.out.println("Selecciona el escenario:");
         System.out.println("1. Un servidor de consulta y un cliente iterativo (1 consulta)");
         System.out.println("2. Un servidor de consulta y un cliente iterativo (32 consultas secuenciales)");
@@ -41,6 +42,7 @@ public class Cliente {
         // Según la opción seleccionada, ejecutar el escenario adecuado
         if (opcion == 1) {
             // Ejecutar solo 1 consulta
+            System.out.print("__________________________________________________________ ");
             System.out.print("Ingrese el servicio a consultar (S1, S2, S3): ");
             String serviceId = scanner.next();
             enviarSolicitud(sock, in, out, serviceId, serverPub);
@@ -60,6 +62,7 @@ public class Cliente {
 
     // Método para ejecutar el Escenario 1: Cliente iterativo con 32 consultas secuenciales
     private static void ejecutarEscenario1(Socket sock, DataInputStream in, DataOutputStream out, PublicKey serverPub) throws Exception {
+        System.out.print("________________________________________________________________ ");
         System.out.println("\nEjecutando Escenario 1: 32 consultas secuenciales...");
 
         // Paso 3: Ejecutar 32 consultas secuenciales
@@ -75,6 +78,7 @@ public class Cliente {
 
     // Método para ejecutar el Escenario 2: Servidor y clientes concurrentes
     private static void ejecutarEscenario2(Socket sock, DataInputStream in, DataOutputStream out, PublicKey serverPub) throws Exception {
+        System.out.print("________________________________________________________________ ");
         System.out.println("\nEjecutando Escenario 2: Servidor y clientes concurrentes...");
 
         // Para simular la concurrencia, usaremos hilos
@@ -99,6 +103,7 @@ public class Cliente {
 
     // Método para enviar la solicitud al servidor
     private static void enviarSolicitud(Socket sock, DataInputStream in, DataOutputStream out, String serviceId, PublicKey serverPub) throws Exception {
+        System.out.println("------------------------------------------------------ " );
         System.out.println("Servicio seleccionado (antes de cifrar): " + serviceId);
 
         // 3) Recibir public key DH + firma desde el servidor
@@ -154,6 +159,7 @@ public class Cliente {
         byte[] cReq = cipher.doFinal(serviceId.getBytes("UTF-8"));
 
         // Petición cifrada (Base64)
+        System.out.println("------------------------------------------------------ " );
         System.out.println("Petición cifrada (Base64):");
         System.out.println(Base64.getEncoder().encodeToString(cReq));
 
@@ -190,6 +196,7 @@ public class Cliente {
 
         cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(iv3));
         String respuesta = new String(cipher.doFinal(c3), "UTF-8");
+        System.out.println("------------------------------------------------------ " );
         System.out.println("→ Respuesta descifrada: " + respuesta);
     }
 }

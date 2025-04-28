@@ -40,6 +40,7 @@ public class ServidorPrincipal {
 
         while (true) {
             Socket sock = serverSocket.accept();
+            System.out.println("------------------------------------------------------ " );
             System.out.println("→ Nueva conexión de " + sock.getRemoteSocketAddress());
             new ClienteHandler(sock, serverPriv).start();
         }
@@ -82,6 +83,7 @@ public class ServidorPrincipal {
                 out.write(sigS);
                 out.flush();
 
+                System.out.println("------------------------------------------------------ " );
                 System.out.printf("  [Medida] firma DH: %,d ns%n", (tFirmaEnd - tFirmaStart));
 
                 // 2) Recibir public key del cliente
@@ -118,6 +120,7 @@ public class ServidorPrincipal {
                 rnd.nextBytes(ivBytes);
                 IvParameterSpec iv = new IvParameterSpec(ivBytes);
 
+                System.out.println("------------------------------------------------- " );
                 System.out.println("Tabla original (antes de cifrar):");
                 System.out.println(new String(plainTable, "UTF-8"));
 
@@ -127,9 +130,12 @@ public class ServidorPrincipal {
                 byte[] cipherTable = cipher.doFinal(plainTable);
                 long tCifradoEnd = System.nanoTime();
 
+                System.out.println("------------------------------------------------------ " );
                 System.out.println("Tabla cifrada:");
                 System.out.println(Base64.getEncoder().encodeToString(cipherTable));
 
+
+                System.out.println("------------------------------------------------------ " );
                 System.out.printf("  [Medida] cifrar tabla: %,d ns%n", (tCifradoEnd - tCifradoStart));
 
                 // 5) Calcular HMAC( IV ‖ CIPHER )
@@ -169,6 +175,8 @@ public class ServidorPrincipal {
                 byte[] ourHreq = mac.doFinal();
                 long tHmacEnd = System.nanoTime();
 
+
+                System.out.println("------------------------------------------------------ " );
                 System.out.printf("  [Medida] verificar HMAC: %,d ns%n", (tHmacEnd - tHmacStart));
 
                 if (!MessageDigest.isEqual(hReq, ourHreq)) {
