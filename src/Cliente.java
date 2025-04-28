@@ -4,6 +4,8 @@ import java.net.*;
 import java.nio.file.*;
 import java.security.*;
 import java.security.spec.*;
+import java.util.Base64;
+
 import javax.crypto.*;
 import javax.crypto.spec.*;
 import javax.crypto.interfaces.DHPublicKey;
@@ -113,11 +115,17 @@ public class Cliente {
         //
         // 7) Enviar petición cifrada
         //
+        System.out.println("Servicio seleccionado (antes de cifrar): " + serviceId);
+
         SecureRandom rnd = new SecureRandom();
         byte[] iv2 = new byte[16];
         rnd.nextBytes(iv2);
         cipher.init(Cipher.ENCRYPT_MODE, kEnc, new IvParameterSpec(iv2));
         byte[] cReq = cipher.doFinal(serviceId.getBytes("UTF-8"));
+
+        System.out.println("Petición cifrada (Base64):");
+        System.out.println(Base64.getEncoder().encodeToString(cReq));
+
 
         mac.reset();
         mac.init(kHmac);
@@ -161,11 +169,15 @@ public class Cliente {
             return;
         }
 
+        System.out.println("Respuesta cifrada (Base64):");
+        System.out.println(Base64.getEncoder().encodeToString(c3));
+
+
         cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(iv3));
         String respuesta = new String(cipher.doFinal(c3), "UTF-8");
-        System.out.println("→ Respuesta recibida: " + respuesta);
+   
 
-        System.out.println("→ Respuesta del servicio: " + respuesta);
+        System.out.println("→ Respuesta del servicio (descifrada): " + respuesta);
 
         sock.close();
     }

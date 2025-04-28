@@ -136,11 +136,17 @@ public class ServidorPrincipal {
                 rnd.nextBytes(ivBytes);
                 IvParameterSpec iv = new IvParameterSpec(ivBytes);
 
+                System.out.println("Tabla original (antes de cifrar):");
+                System.out.println(new String(plainTable, "UTF-8"));
+
                 Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
                 cipher.init(Cipher.ENCRYPT_MODE, kEnc, iv);
                 long tCifradoStart = System.nanoTime();
                 byte[] cipherTable = cipher.doFinal(plainTable);
                 long tCifradoEnd   = System.nanoTime();
+
+                System.out.println("Tabla cifrada:");
+                System.out.println(Base64.getEncoder().encodeToString(cipherTable));    
 
                 System.out.printf("  [Medida] cifrar tabla: %,d ns%n", (tCifradoEnd - tCifradoStart));
 
@@ -234,6 +240,8 @@ public class ServidorPrincipal {
                 out.writeInt(hResp.length);
                 out.write(hResp);
                 out.flush();
+
+                System.out.println("Datos cifrados enviados al cliente.");
 
                 sock.close();
             } catch (Exception e) {
