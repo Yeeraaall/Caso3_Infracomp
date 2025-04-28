@@ -1,4 +1,3 @@
-// ServidorPrincipal.java
 import java.io.*;
 import java.net.*;
 import java.nio.file.*;
@@ -12,10 +11,11 @@ import javax.crypto.spec.*;
 public class ServidorPrincipal {
 
     private static final int PORT = 4000;
-    private static final String DATA_DIR   = "datos";
+    private static final String DATA_DIR = "datos";
     private static final String SERVICES_FILE = "Servicios.txt";
     private static final String PRIVATE_KEY_FILE = "server_private.key";
     private static Map<String, String[]> servicios = new HashMap<>();
+    private static final int MAX_CONNECTIONS = 64;  // Número máximo de conexiones que el servidor procesará
 
     public static void main(String[] args) throws Exception {
         // Obtener la ruta completa utilizando File.separator
@@ -37,20 +37,23 @@ public class ServidorPrincipal {
         // Iniciar servidor
         ServerSocket serverSocket = new ServerSocket(PORT);
         System.out.println("Servidor principal escuchando en puerto " + PORT);
+        Socket clientSocket = serverSocket.accept();
 
-        while (true) {
+        int connectionCount = 0;  // Contador para controlar las conexiones
+
+        while (connectionCount < MAX_CONNECTIONS) {
             Socket sock = serverSocket.accept();
-            System.out.println("------------------------------------------------------ " );
+            System.out.println("------------------------------------------------------ ");
             System.out.println("Nueva conexión de " + sock.getRemoteSocketAddress());
             new ClienteHandler(sock, serverPriv).start();
-            break;
+            connectionCount++;
         }
 
         serverSocket.close();
-
+        System.out.println("Servidor detenido después de procesar " + connectionCount + " conexiones.");
     }
 
-    static class ClienteHandler extends Thread { //manejo de los clientes con concurrencia en Threads
+    static class ClienteHandler extends Thread { // Manejo de los clientes con concurrencia en Threads
         private Socket sock;
         private PrivateKey serverPriv;
 
@@ -87,7 +90,7 @@ public class ServidorPrincipal {
                 out.write(sigS);
                 out.flush();
 
-                System.out.println("------------------------------------------------------ " );
+                System.out.println("------------------------------------------------------ ");
                 System.out.printf("  [Medida] firma DH: %,d ns%n", (tFirmaEnd - tFirmaStart));
 
                 // 2) Recibir public key del cliente
@@ -138,7 +141,6 @@ public class ServidorPrincipal {
                 System.out.println("Tabla cifrada:");
                 System.out.println(Base64.getEncoder().encodeToString(cipherTable));
 
-
                 System.out.println("------------------------------------------------------ " );
                 System.out.printf("  [Medida] cifrar tabla: %,d ns%n", (tCifradoEnd - tCifradoStart));
 
@@ -178,7 +180,6 @@ public class ServidorPrincipal {
                 long tHmacStart = System.nanoTime();
                 byte[] ourHreq = mac.doFinal();
                 long tHmacEnd = System.nanoTime();
-
 
                 System.out.println("------------------------------------------------------ " );
                 System.out.printf("  [Medida] verificar HMAC: %,d ns%n", (tHmacEnd - tHmacStart));
@@ -230,6 +231,11 @@ public class ServidorPrincipal {
 
                 System.out.println("Datos cifrados enviados al cliente.");
                 sock.close();
+
+                // Medir el tiempo total
+                long tTotal = System.nanoTime() - tFirmaStart;  // Tiempo total para todo el proceso
+                System.out.printf("[Medida] Tiempo total de operaciones: %,d ns%n", tTotal);
+
             } catch (Exception e) {
                 e.printStackTrace();
             }

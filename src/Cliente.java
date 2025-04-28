@@ -67,14 +67,22 @@ public class Cliente {
 
         // Paso 3: Ejecutar 32 consultas secuenciales
         for (int i = 0; i < 32; i++) {
-            // Selección aleatoria de servicio
-            String serviceId = "S" + (i % 3 + 1); // Generar un ID de servicio aleatorio (S1, S2, S3)
+        // Crear un nuevo socket para cada consulta
+        Socket socket = new Socket(HOST, PORT);
+        DataInputStream newIn = new DataInputStream(socket.getInputStream());
+        DataOutputStream newOut = new DataOutputStream(socket.getOutputStream());
 
-            System.out.println("Enviando solicitud para el servicio: " + serviceId);
-            // Enviar la solicitud (con cifrado y verificación HMAC)
-            enviarSolicitud(sock, in, out, serviceId, serverPub);
+        // Selección aleatoria de servicio
+        String serviceId = "S" + (i % 3 + 1); // Generar un ID de servicio aleatorio (S1, S2, S3)
+
+        System.out.println("Enviando solicitud para el servicio: " + serviceId);
+        // Enviar la solicitud (con cifrado y verificación HMAC)
+        enviarSolicitud(socket, newIn, newOut, serviceId, serverPub);
+
+        // Cerrar el socket después de cada consulta
+        socket.close();
+        
         }
-        sock.close();
     }
 
     // Método para ejecutar el Escenario 2: Servidor y clientes concurrentes
@@ -87,21 +95,26 @@ public class Cliente {
         for (int i = 0; i < numClientes; i++) {
             new Thread(() -> {
                 try {
-                    String serviceId = "S" + (int)(Math.random() * 3 + 1); // Servicio aleatorio
-                    System.out.println("Enviando solicitud aleatoria para el servicio: " + serviceId);
-                    // Enviar la solicitud (con cifrado y verificación HMAC)
-                    try {
-                        enviarSolicitud(sock, in, out, serviceId, serverPub);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    // Crear un nuevo socket para cada hilo
+                Socket socket = new Socket(HOST, PORT);
+                DataInputStream newIn = new DataInputStream(socket.getInputStream());
+                DataOutputStream newOut = new DataOutputStream(socket.getOutputStream());
+
+                String serviceId = "S" + (int)(Math.random() * 3 + 1); // Servicio aleatorio
+                System.out.println("Enviando solicitud aleatoria para el servicio: " + serviceId);
+                // Enviar la solicitud (con cifrado y verificación HMAC)
+                enviarSolicitud(socket, newIn, newOut, serviceId, serverPub);
+
+                // Cerrar el socket después de cada consulta
+                socket.close();
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
             }).start();
         }
-        Thread.sleep(4000);  // Espera de 4 segundos para dar tiempo a los hilos concurrentes
-        sock.close();
+        // Esperamos a que todos los hilos finalicen antes de cerrar la conexión
+        Thread.sleep(5000);  // Espera de 5 segundos para dar tiempo a los hilos concurrentes
+        
     }
 
     // Método para enviar la solicitud al servidor
