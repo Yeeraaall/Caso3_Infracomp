@@ -1,55 +1,35 @@
+// DelegadoServidor.java
 import java.io.*;
 import java.net.*;
 import java.util.*;
 
 public class DelegadoServidor {
 
-    private static Map<String, String> serviciosDelegados = new HashMap<>();
+    // Puerto en el que escucha el delegado
+    private static final int PORT = 5000;
 
-    public static void main(String[] args) {
-        try {
-            ServerSocket serverSocket = new ServerSocket(5000);
-            System.out.println("Servidor delegado esperando conexiones...");
-
-            // Definir servicios disponibles
-            serviciosDelegados.put("S1", "Estado de vuelo: En horario");
-            serviciosDelegados.put("S2", "Disponibilidad: Hay 5 vuelos");
-            serviciosDelegados.put("S3", "Costo: $200 USD");
-
-            while (true) {
-                Socket clienteSocket = serverSocket.accept();
-                System.out.println("Conexión de servidor delegado con: " + clienteSocket.getRemoteSocketAddress());
-                new DelegadoHandler(clienteSocket).start();
-            }
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+    // Simula la respuesta concreta de cada servicio
+    private static Map<String,String> resps = new HashMap<>();
+    static {
+        resps.put("S1", "Estado de vuelo: En horario");
+        resps.put("S2", "Disponibilidad: Hay 5 vuelos");
+        resps.put("S3", "Costo: $200 USD");
     }
 
-    // Maneja las consultas delegadas
-    static class DelegadoHandler extends Thread {
-        private Socket clienteSocket;
-
-        public DelegadoHandler(Socket socket) {
-            this.clienteSocket = socket;
-        }
-
-        public void run() {
-            try {
-                DataInputStream input = new DataInputStream(clienteSocket.getInputStream());
-                DataOutputStream output = new DataOutputStream(clienteSocket.getOutputStream());
-
-                // Recibir la solicitud del servidor principal
-                String servicioId = input.readUTF();
-                String respuesta = serviciosDelegados.getOrDefault(servicioId, "Servicio no encontrado");
-
-                output.writeUTF(respuesta);
-
-                clienteSocket.close();
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
+    public static void main(String[] args) throws IOException {
+        ServerSocket ss = new ServerSocket(PORT);
+        System.out.println("Delegado escuchando en puerto " + PORT);
+        while (true) {
+            Socket s = ss.accept();
+            new Thread(() -> {
+                try (DataInputStream in  = new DataInputStream(s.getInputStream());
+                     DataOutputStream out = new DataOutputStream(s.getOutputStream())) {
+                    String id = in.readUTF();
+                    out.writeUTF(resps.getOrDefault(id, "Servicio no encontrado"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }).start();
         }
     }
 }

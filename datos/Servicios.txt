@@ -1,0 +1,3 @@
+S1,Estado de vuelo,127.0.0.1,5000
+S2,Disponibilidad de vuelos,127.0.0.1,5000
+S3,Costo de un vuelo,127.0.0.1,5000
