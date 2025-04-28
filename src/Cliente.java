@@ -22,7 +22,7 @@ public class Cliente {
         // 1) Cargar llave pública del servidor desde datos/server_public.key
         Path pubKeyPath = Paths.get(DATA_DIR, SERVER_PUBLIC_KEY_FILE);
         String spk = new String(Files.readAllBytes(pubKeyPath), "UTF-8").trim();
-        PublicKey serverPub = ManejadorDeCifrado.generarLlavePublica(spk);
+        PublicKey serverPub = ManejadorDeCifrado.generarLlavePublica(spk); // Cargar la llave pública del servidor
 
         // Conectar al servidor principal
         Socket sock = new Socket(HOST, PORT);
@@ -43,13 +43,13 @@ public class Cliente {
             // Ejecutar solo 1 consulta
             System.out.print("Ingrese el servicio a consultar (S1, S2, S3): ");
             String serviceId = scanner.next();
-            enviarSolicitud(sock, in, out, serviceId);
+            enviarSolicitud(sock, in, out, serviceId, serverPub);
         } else if (opcion == 2) {
             // Ejecutar 32 consultas secuenciales
-            ejecutarEscenario1(sock, in, out);
+            ejecutarEscenario1(sock, in, out, serverPub);
         } else if (opcion == 3) {
             // Ejecutar escenario de clientes concurrentes
-            ejecutarEscenario2(sock, in, out);
+            ejecutarEscenario2(sock, in, out, serverPub);
         } else {
             System.out.println("Opción no válida.");
         }
@@ -59,7 +59,7 @@ public class Cliente {
     }
 
     // Método para ejecutar el Escenario 1: Cliente iterativo con 32 consultas secuenciales
-    private static void ejecutarEscenario1(Socket sock, DataInputStream in, DataOutputStream out) throws Exception {
+    private static void ejecutarEscenario1(Socket sock, DataInputStream in, DataOutputStream out, PublicKey serverPub) throws Exception {
         System.out.println("\nEjecutando Escenario 1: 32 consultas secuenciales...");
 
         // Paso 3: Ejecutar 32 consultas secuenciales
@@ -69,12 +69,12 @@ public class Cliente {
 
             System.out.println("→ Enviando solicitud para el servicio: " + serviceId);
             // Enviar la solicitud (con cifrado y verificación HMAC)
-            enviarSolicitud(sock, in, out, serviceId);
+            enviarSolicitud(sock, in, out, serviceId, serverPub);
         }
     }
 
     // Método para ejecutar el Escenario 2: Servidor y clientes concurrentes
-    private static void ejecutarEscenario2(Socket sock, DataInputStream in, DataOutputStream out) throws Exception {
+    private static void ejecutarEscenario2(Socket sock, DataInputStream in, DataOutputStream out, PublicKey serverPub) throws Exception {
         System.out.println("\nEjecutando Escenario 2: Servidor y clientes concurrentes...");
 
         // Para simular la concurrencia, usaremos hilos
@@ -85,7 +85,11 @@ public class Cliente {
                     String serviceId = "S" + (int)(Math.random() * 3 + 1); // Servicio aleatorio
                     System.out.println("→ Enviando solicitud aleatoria para el servicio: " + serviceId);
                     // Enviar la solicitud (con cifrado y verificación HMAC)
-                    enviarSolicitud(sock, in, out, serviceId);
+                    try {
+                        enviarSolicitud(sock, in, out, serviceId, serverPub);
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
                 } catch (Exception e) {
                     e.printStackTrace();
                 }
@@ -94,8 +98,52 @@ public class Cliente {
     }
 
     // Método para enviar la solicitud al servidor
-    private static void enviarSolicitud(Socket sock, DataInputStream in, DataOutputStream out, String serviceId) throws Exception {
+    private static void enviarSolicitud(Socket sock, DataInputStream in, DataOutputStream out, String serviceId, PublicKey serverPub) throws Exception {
         System.out.println("Servicio seleccionado (antes de cifrar): " + serviceId);
+
+        // 3) Recibir public key DH + firma desde el servidor
+        int lenPubS = in.readInt();
+        byte[] pubS = new byte[lenPubS];
+        in.readFully(pubS);
+
+        int lenSigS = in.readInt();
+        byte[] sigS = new byte[lenSigS];
+        in.readFully(sigS);
+
+        // Verificar firma DH
+        if (!ManejadorDeCifrado.validarFirma(serverPub, pubS, sigS)) { //error en serverPub
+            System.err.println("Firma DH inválida. Abortando.");
+            sock.close();
+            return;
+        }
+
+        //
+        // 4) Generar nuestro par DH usando los mismos parámetros y enviar public key
+        //
+        KeyFactory kf = KeyFactory.getInstance("DH");
+        X509EncodedKeySpec xspec = new X509EncodedKeySpec(pubS);
+        DHPublicKey dhPub = (DHPublicKey) kf.generatePublic(xspec);
+        DHParameterSpec dhSpec = dhPub.getParams();
+
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("DH");
+        kpg.initialize(dhSpec);
+        KeyPair clientKP = kpg.generateKeyPair();
+
+        byte[] pubC = clientKP.getPublic().getEncoded();
+        out.writeInt(pubC.length);
+        out.write(pubC);
+        out.flush();
+
+        // Derivar secreto compartido
+        KeyAgreement ka = KeyAgreement.getInstance("DH");
+        ka.init(clientKP.getPrivate());
+        ka.doPhase(dhPub, true);
+        byte[] z = ka.generateSecret();
+
+        // Derivar claves AES/HMAC
+        SecretKey[] keys = ManejadorDeCifrado.generarLlavesSimetricas(z);
+        kEnc = keys[0];
+        kHmac = keys[1];
 
         // Generar un IV aleatorio para cifrar la solicitud
         SecureRandom rnd = new SecureRandom();
@@ -106,10 +154,8 @@ public class Cliente {
         byte[] cReq = cipher.doFinal(serviceId.getBytes("UTF-8"));
 
         // Petición cifrada (Base64)
-        if (cReq != null) {
-            System.out.println("Petición cifrada (Base64):");
-            System.out.println(Base64.getEncoder().encodeToString(cReq)); //error en Base64.
-        }
+        System.out.println("Petición cifrada (Base64):");
+        System.out.println(Base64.getEncoder().encodeToString(cReq));
 
         out.writeInt(iv2.length);
         out.write(iv2);
@@ -142,7 +188,7 @@ public class Cliente {
             return;
         }
 
-        cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(iv3)); //error en KEnc
+        cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(iv3));
         String respuesta = new String(cipher.doFinal(c3), "UTF-8");
         System.out.println("→ Respuesta descifrada: " + respuesta);
     }
