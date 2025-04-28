@@ -25,6 +25,7 @@ public class DelegadoServidor {
                      DataOutputStream out = new DataOutputStream(s.getOutputStream())) {
                     String id = in.readUTF();
                     out.writeUTF(resps.getOrDefault(id, "Servicio no encontrado"));
+                    s.close();
                 } catch (IOException e) {
                     e.printStackTrace();
                 }

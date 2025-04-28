@@ -70,7 +70,7 @@ public class Cliente {
             // Selección aleatoria de servicio
             String serviceId = "S" + (i % 3 + 1); // Generar un ID de servicio aleatorio (S1, S2, S3)
 
-            System.out.println("→ Enviando solicitud para el servicio: " + serviceId);
+            System.out.println("Enviando solicitud para el servicio: " + serviceId);
             // Enviar la solicitud (con cifrado y verificación HMAC)
             enviarSolicitud(sock, in, out, serviceId, serverPub);
         }
@@ -88,7 +88,7 @@ public class Cliente {
             new Thread(() -> {
                 try {
                     String serviceId = "S" + (int)(Math.random() * 3 + 1); // Servicio aleatorio
-                    System.out.println("→ Enviando solicitud aleatoria para el servicio: " + serviceId);
+                    System.out.println("Enviando solicitud aleatoria para el servicio: " + serviceId);
                     // Enviar la solicitud (con cifrado y verificación HMAC)
                     try {
                         enviarSolicitud(sock, in, out, serviceId, serverPub);
@@ -200,6 +200,6 @@ public class Cliente {
         cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(iv3));
         String respuesta = new String(cipher.doFinal(c3), "UTF-8");
         System.out.println("------------------------------------------------------ " );
-        System.out.println("→ Respuesta descifrada: " + respuesta);
+        System.out.println("\n Respuesta descifrada: " + respuesta);
     }
 }

@@ -41,12 +41,16 @@ public class ServidorPrincipal {
         while (true) {
             Socket sock = serverSocket.accept();
             System.out.println("------------------------------------------------------ " );
-            System.out.println("→ Nueva conexión de " + sock.getRemoteSocketAddress());
+            System.out.println("Nueva conexión de " + sock.getRemoteSocketAddress());
             new ClienteHandler(sock, serverPriv).start();
+            break;
         }
+
+        serverSocket.close();
+
     }
 
-    static class ClienteHandler extends Thread {
+    static class ClienteHandler extends Thread { //manejo de los clientes con concurrencia en Threads
         private Socket sock;
         private PrivateKey serverPriv;
 
@@ -180,7 +184,7 @@ public class ServidorPrincipal {
                 System.out.printf("  [Medida] verificar HMAC: %,d ns%n", (tHmacEnd - tHmacStart));
 
                 if (!MessageDigest.isEqual(hReq, ourHreq)) {
-                    System.err.println("  → HMAC inválido, cerrando conexión.");
+                    System.err.println(" HMAC inválido, cerrando conexión.");
                     sock.close();
                     return;
                 }
@@ -189,7 +193,7 @@ public class ServidorPrincipal {
                 cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(ivReq));
                 String serviceId = new String(cipher.doFinal(cReq), "UTF-8").trim();
 
-                System.out.println("→ Solicitud recibida para servicio: " + serviceId);
+                System.out.println("Solicitud recibida para servicio: " + serviceId);
 
                 // 9) Delegar consulta (conexión plana)
                 String[] info = servicios.getOrDefault(serviceId, new String[]{"", "-1", "-1"});
