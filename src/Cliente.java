@@ -74,6 +74,7 @@ public class Cliente {
             // Enviar la solicitud (con cifrado y verificación HMAC)
             enviarSolicitud(sock, in, out, serviceId, serverPub);
         }
+        sock.close();
     }
 
     // Método para ejecutar el Escenario 2: Servidor y clientes concurrentes
@@ -99,6 +100,8 @@ public class Cliente {
                 }
             }).start();
         }
+        Thread.sleep(4000);  // Espera de 4 segundos para dar tiempo a los hilos concurrentes
+        sock.close();
     }
 
     // Método para enviar la solicitud al servidor
