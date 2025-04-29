@@ -185,7 +185,7 @@ public class Cliente {
                 System.out.printf("--- Consulta %d completada en %.2f ms ---%n", (i + 1),
                         (tiempoConsultaFin - tiempoConsultaInicio) / 1_000_000.0);
             }
-        } // Fin del bucle for
+        } 
 
         long tiempoTotalFin = System.nanoTime();
         System.out.printf("\n--- Escenario 1 completado. Consultas exitosas: %d/%d. Tiempo total: %.2f ms ---%n",
@@ -196,11 +196,6 @@ public class Cliente {
     private static void ejecutarEscenario2(PublicKey serverPubRSA, int numClientes) {
         System.out.println("\n--- Ejecutando Escenario 2: " + numClientes + " clientes concurrentes ---");
         List<Thread> threads = new ArrayList<>();
-        // Contador atómico para rastrear éxitos/fallos si es necesario
-        // java.util.concurrent.atomic.AtomicInteger exitos = new
-        // java.util.concurrent.atomic.AtomicInteger(0);
-        // java.util.concurrent.atomic.AtomicInteger fallos = new
-        // java.util.concurrent.atomic.AtomicInteger(0);
         long tiempoTotalInicio = System.nanoTime();
 
         for (int i = 0; i < numClientes; i++) {
@@ -208,8 +203,7 @@ public class Cliente {
             Thread thread = new Thread(() -> {
                 long tiempoHiloInicio = System.nanoTime();
                 String serviceId = "S" + (int) (Math.random() * 3 + 1); // Servicio aleatorio
-                // System.out.println("[Cliente " + clientId + "] Iniciando consulta para: " +
-                // serviceId);
+
 
                 // Crear un nuevo socket para cada hilo dentro del try-with-resources
                 try (Socket socket = new Socket()) {
@@ -219,21 +213,16 @@ public class Cliente {
                     try (DataInputStream newIn = new DataInputStream(socket.getInputStream());
                             DataOutputStream newOut = new DataOutputStream(socket.getOutputStream())) {
 
-                        // System.out.println("[Cliente " + clientId + "] Conectado. Enviando solicitud
-                        // para: " + serviceId);
                         enviarSolicitud(newIn, newOut, serviceId, serverPubRSA);
-                        // exitos.incrementAndGet(); // Incrementar éxitos si se completa sin excepción
-                        // System.out.println("[Cliente " + clientId + "] Consulta para " + serviceId +
-                        // " completada.");
-
-                    } // Streams cerrados aquí
+                
+                    } 
 
                 } catch (ConnectException ce) {
                     System.err.println("[Cliente " + clientId + "] Error de conexión: Servidor no disponible.");
-                    // fallos.incrementAndGet();
+                    
                 } catch (SocketTimeoutException ste) {
                     System.err.println("[Cliente " + clientId + "] Error: Timeout.");
-                    // fallos.incrementAndGet();
+                    
                 } catch (EOFException eofe) {
                     System.err.println(
                             "[Cliente " + clientId + "] Error: El servidor cerró la conexión inesperadamente.");
@@ -243,57 +232,36 @@ public class Cliente {
                     // fallos.incrementAndGet();
                 } catch (GeneralSecurityException gse) {
                     System.err.println("[Cliente " + clientId + "] Error de seguridad: " + gse.getMessage());
-                    // fallos.incrementAndGet();
+                    
                 } catch (Exception e) {
                     System.err.println("[Cliente " + clientId + "] Error inesperado: " + e.getMessage());
                     e.printStackTrace(); // Para debug
-                    // fallos.incrementAndGet();
+                    
                 } finally {
                     long tiempoHiloFin = System.nanoTime();
-                    // System.out.printf("[Cliente %d] Hilo terminado en %.2f ms%n", clientId,
-                    // (tiempoHiloFin - tiempoHiloInicio) / 1_000_000.0);
                 }
-            }); // Fin del lambda del thread
+            });
             threads.add(thread);
-            thread.start(); // Iniciar el hilo
-        } // Fin del bucle for para crear hilos
+            thread.start(); 
+        } 
 
-        // Esperar a que todos los hilos terminen usando join()
+       
         System.out.println("Esperando a que los " + numClientes + " hilos terminen...");
         for (Thread t : threads) {
             try {
-                t.join(); // Esperar a que este hilo termine
+                t.join();
             } catch (InterruptedException e) {
                 System.err.println("Hilo principal interrumpido mientras esperaba. Continuando...");
-                Thread.currentThread().interrupt(); // Restaurar estado de interrupción
+                Thread.currentThread().interrupt(); 
             }
         }
 
         long tiempoTotalFin = System.nanoTime();
         System.out.printf("\n--- Escenario 2 completado. %d clientes concurrentes. Tiempo total: %.2f ms ---%n",
                 numClientes, (tiempoTotalFin - tiempoTotalInicio) / 1_000_000.0);
-        // System.out.printf(" Resultados: %d éxitos, %d fallos%n", exitos.get(),
-        // fallos.get());
 
     }
 
-    /**
-     * Maneja una interacción completa y segura con el servidor:
-     * 1. Recibe la clave pública DH firmada del servidor y la verifica.
-     * 2. Genera su propia clave DH y la envía.
-     * 3. Deriva las claves simétricas (AES, HMAC).
-     * 4. Recibe la tabla de servicios cifrada/autenticada del servidor y la
-     * verifica.
-     * 5. Envía la solicitud de servicio cifrada/autenticada.
-     * 6. Recibe la respuesta cifrada/autenticada y la verifica/descifra.
-     *
-     * @param in           DataInputStream conectado al servidor.
-     * @param out          DataOutputStream conectado al servidor.
-     * @param serviceId    El ID del servicio a solicitar.
-     * @param serverPubRSA La clave pública RSA del servidor para verificar firmas.
-     * @throws IOException              Si ocurren errores de red.
-     * @throws GeneralSecurityException Si ocurren errores criptográficos.
-     */
     private static void enviarSolicitud(DataInputStream in, DataOutputStream out, String serviceId,
             PublicKey serverPubRSA)
             throws IOException, GeneralSecurityException {
@@ -317,40 +285,38 @@ public class Cliente {
         if (!ManejadorDeCifrado.validarFirma(serverPubRSA, pubS_DH_bytes, sigS)) {
             throw new SecurityException("Firma DH del servidor inválida. Abortando.");
         }
-        // System.out.println("Firma DH del servidor verificada.");
-
+        
         // 4) Generar nuestro par DH usando los mismos parámetros recibidos y enviar
         // public key
         KeyFactory kf_DH = KeyFactory.getInstance("DH");
         X509EncodedKeySpec xspec = new X509EncodedKeySpec(pubS_DH_bytes);
-        DHPublicKey serverPubDH = (DHPublicKey) kf_DH.generatePublic(xspec); // Llave pública DH del Servidor
-        DHParameterSpec dhSpec = serverPubDH.getParams(); // Obtener parámetros DH del servidor
+        DHPublicKey serverPubDH = (DHPublicKey) kf_DH.generatePublic(xspec); 
+        DHParameterSpec dhSpec = serverPubDH.getParams(); 
 
         KeyPairGenerator kpg_cliente = KeyPairGenerator.getInstance("DH");
-        kpg_cliente.initialize(dhSpec); // Inicializar con los parámetros del servidor
-        KeyPair clientKP_DH = kpg_cliente.generateKeyPair(); // Nuestro par de claves DH
+        kpg_cliente.initialize(dhSpec);
+        KeyPair clientKP_DH = kpg_cliente.generateKeyPair(); 
 
-        byte[] pubC_DH_bytes = clientKP_DH.getPublic().getEncoded(); // Nuestra clave pública DH
+        byte[] pubC_DH_bytes = clientKP_DH.getPublic().getEncoded(); 
         out.writeInt(pubC_DH_bytes.length);
         out.write(pubC_DH_bytes);
         out.flush();
-        // System.out.println("Llave pública DH del cliente enviada.");
+
 
         // 5) Derivar secreto compartido (Z) y llaves simétricas (K_enc, K_hmac)
         KeyAgreement ka = KeyAgreement.getInstance("DH");
-        ka.init(clientKP_DH.getPrivate()); // Nuestra clave privada DH
-        ka.doPhase(serverPubDH, true); // Con la clave pública DH del servidor
+        ka.init(clientKP_DH.getPrivate()); 
+        ka.doPhase(serverPubDH, true); 
         byte[] z = ka.generateSecret();
 
-        SecretKey[] keys = ManejadorDeCifrado.generarLlavesSimetricas(z); // Derivar AES y HMAC keys
+        SecretKey[] keys = ManejadorDeCifrado.generarLlavesSimetricas(z);
         SecretKey kEnc = keys[0];
         SecretKey kHmac = keys[1];
-        // System.out.println("Secreto compartido y llaves simétricas derivadas.");
-        // z debe ser limpiado de memoria si es posible después de derivar las claves
+
 
         // --- Recepción y Verificación de la Tabla de Servicios ---
 
-        // System.out.println("Esperando tabla de servicios cifrada del servidor...");
+        
         int ivTableLen = in.readInt();
         if (ivTableLen != 16)
             throw new IOException("Tamaño IV tabla inválido: " + ivTableLen);
@@ -368,64 +334,48 @@ public class Cliente {
             throw new IOException("Tamaño HMAC tabla inválido: " + hmacTableLen);
         byte[] hmacTableRcvd = new byte[hmacTableLen];
         in.readFully(hmacTableRcvd);
-        // System.out.println("Tabla cifrada recibida.");
+        
 
         // Verificar HMAC de la tabla recibida: HMAC( IV_tabla || CIPHERTEXT_tabla )
-        Mac mac = Mac.getInstance("HmacSHA256"); // Crear instancia MAC
+        Mac mac = Mac.getInstance("HmacSHA256"); 
         mac.init(kHmac);
         mac.update(ivTable);
         mac.update(cipherTable);
         byte[] hmacTableCalc = mac.doFinal();
 
-        if (!MessageDigest.isEqual(hmacTableRcvd, hmacTableCalc)) { // Comparación segura
+        if (!MessageDigest.isEqual(hmacTableRcvd, hmacTableCalc)) { 
             throw new SecurityException("HMAC de la tabla de servicios inválido. Datos corruptos o manipulados.");
         }
-        // System.out.println("HMAC de la tabla de servicios verificado.");
-        // Opcional: Descifrar la tabla si el cliente la necesita
-        // Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
-        // cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(ivTable));
-        // String tablaServicios = new String(cipher.doFinal(cipherTable), "UTF-8");
-        // System.out.println("Tabla de Servicios Descifrada:\n" + tablaServicios);
-
-        // --- Envío de la Solicitud de Servicio ---
-
-        // System.out.println("------------------------------------------------------ "
-        // );
-        // System.out.println("Servicio a solicitar (antes de cifrar): " + serviceId);
+       
         SecureRandom rnd = SecureRandom.getInstanceStrong();
-        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding"); // Crear instancia Cipher
-        byte[] ivReq = new byte[cipher.getBlockSize()]; // IV para la petición
+        Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+        byte[] ivReq = new byte[cipher.getBlockSize()]; 
         rnd.nextBytes(ivReq);
         IvParameterSpec ivSpecReq = new IvParameterSpec(ivReq);
 
         // Cifrar el ID del servicio
         cipher.init(Cipher.ENCRYPT_MODE, kEnc, ivSpecReq);
-        byte[] cReq = cipher.doFinal(serviceId.getBytes("UTF-8")); // Petición cifrada
+        byte[] cReq = cipher.doFinal(serviceId.getBytes("UTF-8")); 
 
-        // Calcular HMAC para la petición: HMAC( IV_req || CIPHER_req )
-        mac.reset(); // Reusar la instancia Mac inicializada con kHmac
+        
+        mac.reset(); 
         mac.update(ivReq);
         mac.update(cReq);
         byte[] hReq = mac.doFinal(); // HMAC de la petición
 
-        // System.out.println("Petición cifrada (Base64): " +
-        // Base64.getEncoder().encodeToString(cReq));
-        // System.out.println("Enviando petición cifrada (IV + Cipher + HMAC)...");
-
+        System.out.println("Petición cifrada (Base64): " + Base64.getEncoder().encodeToString(cReq));
+        
         // Enviar petición cifrada y autenticada:
-        // len(iv)‖iv‖len(cipher)‖cipher‖len(hmac)‖hmac
         out.writeInt(ivReq.length);
         out.write(ivReq);
         out.writeInt(cReq.length);
         out.write(cReq);
-        out.writeInt(hReq.length); // Enviar longitud del HMAC
-        out.write(hReq); // Enviar HMAC
+        out.writeInt(hReq.length); 
+        out.write(hReq); 
         out.flush();
-        // System.out.println("Petición enviada.");
+        
 
         // --- Recepción y Verificación de la Respuesta ---
-
-        // System.out.println("Esperando respuesta cifrada del servidor...");
         int ivRespLen = in.readInt();
         if (ivRespLen != 16)
             throw new IOException("Tamaño IV respuesta inválido: " + ivRespLen);
@@ -434,7 +384,7 @@ public class Cliente {
 
         int cRespLen = in.readInt();
         if (cRespLen <= 0 || cRespLen > 65536 * 2)
-            throw new IOException("Tamaño respuesta cifrada inválido: " + cRespLen); // Ajustar límite
+            throw new IOException("Tamaño respuesta cifrada inválido: " + cRespLen);
         byte[] cResp = new byte[cRespLen];
         in.readFully(cResp);
 
@@ -443,17 +393,16 @@ public class Cliente {
             throw new IOException("Tamaño HMAC respuesta inválido: " + hRespLen);
         byte[] hRespRcvd = new byte[hRespLen];
         in.readFully(hRespRcvd);
-        // System.out.println("Respuesta cifrada recibida.");
+        
 
         // Verificar HMAC de la respuesta: HMAC( IV_resp || CIPHER_resp )
-        mac.reset(); // Reusar MAC
+        mac.reset(); 
         mac.update(ivResp);
         mac.update(cResp);
         byte[] hRespCalc = mac.doFinal();
         if (!MessageDigest.isEqual(hRespRcvd, hRespCalc)) { // Comparación segura
             throw new SecurityException("HMAC de la respuesta del servidor inválido.");
         }
-        // System.out.println("HMAC de la respuesta verificado.");
 
         // Descifrar la respuesta
         cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(ivResp)); // Reusar Cipher
@@ -463,16 +412,9 @@ public class Cliente {
         System.out.println("------------------------------------------------------ ");
         System.out.println("Respuesta final descifrada: " + respuesta);
         System.out.println("------------------------------------------------------ ");
+    } 
 
-        // Limpieza de claves simétricas si es posible/necesario
-        // kEnc, kHmac, z (si aún existe referencia)
-
-        // El cierre de streams/socket lo maneja el try-with-resources del método
-        // llamador
-
-    } // Fin de enviarSolicitud
-
-    // Clase auxiliar (debe coincidir con la del servidor)
+    // Clase auxiliar 
     static class ManejadorDeCifrado {
         public static PublicKey generarLlavePublica(String base64Key) throws GeneralSecurityException, IOException {
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);
@@ -509,4 +451,4 @@ public class Cliente {
         }
     }
 
-} // Fin de la clase Cliente
+} 
