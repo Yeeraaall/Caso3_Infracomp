@@ -18,19 +18,13 @@ public class ServidorPrincipal {
     private static final Map<String, String[]> servicios = new HashMap<>();
     private static final int MAX_CONNECTIONS = 64; // Número máximo de conexiones que el servidor procesará
 
-    // Opcional: Usar un ExecutorService para gestionar los hilos de forma más
-    // eficiente
-    // private static ExecutorService pool =
-    // Executors.newFixedThreadPool(MAX_CONNECTIONS);
 
     public static void main(String[] args) throws Exception {
         // Obtener la ruta completa utilizando File.separator
         Path serviciosPath = Paths.get(DATA_DIR, SERVICES_FILE);
-        System.out.println("Ruta de Servicios.txt: " + serviciosPath.toAbsolutePath().toString()); // Imprimir la ruta
-                                                                                                   // completa
+        System.out.println("Ruta de Servicios.txt: " + serviciosPath.toAbsolutePath().toString());
 
         // Cargar tabla de servicios
-        // Usar try-with-resources para el reader si lees línea por línea
         List<String> lines = Files.readAllLines(serviciosPath);
         for (String línea : lines) {
             if (línea.trim().isEmpty() || línea.startsWith("#"))
@@ -42,7 +36,7 @@ public class ServidorPrincipal {
                 System.err.println("Línea mal formateada en Servicios.txt: " + línea);
             }
         }
-        System.out.println("Servicios cargados: " + servicios.size());
+
 
         // Cargar llave privada RSA
         Path privateKeyPath = Paths.get(DATA_DIR, PRIVATE_KEY_FILE);
@@ -52,10 +46,9 @@ public class ServidorPrincipal {
             // 1. Leer el archivo PEM como String
             String privateKeyPEMContent = Files.readString(privateKeyPath, StandardCharsets.UTF_8);
 
-            // 2. Limpiar cabeceras, pies y saltos de línea
             String privateKeyPEM = privateKeyPEMContent
                     .replace("-----BEGIN PRIVATE KEY-----", "")
-                    .replaceAll("\\r\\n|\\r|\\n", "") // Eliminar todos los tipos de saltos de línea
+                    .replaceAll("\\r\\n|\\r|\\n", "")
                     .replace("-----END PRIVATE KEY-----", "")
                     .trim(); // Eliminar espacios al inicio/final
 
@@ -79,22 +72,15 @@ public class ServidorPrincipal {
             // IllegalArgumentException para errores de Base64
             // GeneralSecurityException para errores de KeyFactory/Spec
             System.err.println("Error Crítico al cargar o procesar la llave privada desde " + privateKeyPath);
-            System.err.println("Verifique que el archivo '" + PRIVATE_KEY_FILE
-                    + "' esté en formato PEM (-----BEGIN/END PRIVATE KEY-----) y sea una clave RSA PKCS#8 válida.");
-            e.printStackTrace(); // Mostrar el error detallado
-            System.exit(1); // Salir si hay error al cargar la llave
+            
         }
 
-        // Doble check por si algo falló y serverPriv sigue null (aunque las excepciones
-        // deberían salir)
         if (serverPriv == null) {
             System.err.println("Fallo crítico inesperado: La llave privada no se pudo cargar.");
             System.exit(1);
         }
 
-        // --- El resto del método main continúa aquí ---
-        // ... (Iniciar servidor, bucle while, etc.) ...
-        // Iniciar servidor
+
         ServerSocket serverSocket = null;
         int connectionCount = 0;
         System.out.println("Servidor principal iniciando en puerto " + PORT);
@@ -110,27 +96,25 @@ public class ServidorPrincipal {
                     System.out.println("Nueva conexión de " + sock.getRemoteSocketAddress() + " (Conexión "
                             + (connectionCount + 1) + "/" + MAX_CONNECTIONS + ")");
 
-                    // Crear y empezar el handler para este cliente
+                    
                     ClienteHandler handler = new ClienteHandler(sock, serverPriv);
                     handler.start();
-                    // Opcional: Usar ExecutorService
-                    // pool.execute(new ClienteHandler(sock, serverPriv));
 
                     connectionCount++;
 
                 } catch (IOException e) {
-                    // Si el serverSocket se cierra mientras accept() está bloqueado
+                   
                     if (serverSocket.isClosed()) {
                         System.out.println("ServerSocket cerrado, deteniendo aceptación de nuevas conexiones.");
                         break;
                     }
                     System.err.println("Error aceptando conexión: " + e.getMessage());
-                    // Considerar si continuar o detenerse ante errores de aceptación
+                  
                 }
             }
         } catch (IOException e) {
             System.err.println("No se pudo iniciar el servidor en el puerto " + PORT + ": " + e.getMessage());
-            // e.printStackTrace();
+           
         } finally {
             System.out.println(
                     "Se alcanzó el límite de conexiones (" + connectionCount + ") o el servidor se está deteniendo.");
@@ -142,11 +126,7 @@ public class ServidorPrincipal {
                     System.err.println("Error cerrando ServerSocket: " + e.getMessage());
                 }
             }
-            // Opcional: Apagar el pool de hilos si se usa
-            // if (pool != null) {
-            // pool.shutdown();
-            // System.out.println("ExecutorService apagado.");
-            // }
+
             System.out.println("Servidor detenido después de procesar " + connectionCount + " conexiones.");
         }
     }
@@ -163,12 +143,10 @@ public class ServidorPrincipal {
 
         @Override
         public void run() {
-            // Usar try-with-resources para asegurar que los streams y el socket se cierren
             try (DataInputStream in = new DataInputStream(sock.getInputStream());
                     DataOutputStream out = new DataOutputStream(sock.getOutputStream())) {
 
                 // 1) Handshake Diffie-Hellman + firma del public key
-                // (Generar parámetros DH - podría hacerse una vez fuera si son estáticos)
                 AlgorithmParameterGenerator paramGen = AlgorithmParameterGenerator.getInstance("DH");
                 paramGen.init(1024); // O usar un tamaño más moderno como 2048
                 AlgorithmParameters params = paramGen.generateParameters();
@@ -196,7 +174,7 @@ public class ServidorPrincipal {
 
                 // 2) Recibir public key DH del cliente
                 int lenPubC = in.readInt();
-                if (lenPubC > 10000 || lenPubC < 0) { // Validación básica de tamaño
+                if (lenPubC > 10000 || lenPubC < 0) { // Validación básica de tamaño solucion bugg
                     throw new IOException("Tamaño inválido para la clave pública del cliente: " + lenPubC);
                 }
                 byte[] pubC_DH = new byte[lenPubC];
@@ -217,8 +195,7 @@ public class ServidorPrincipal {
                 SecretKey kEnc = keys[0];
                 SecretKey kHmac = keys[1];
 
-                // 3) Serializar tabla de servicios ("id,desc,ip,puerto\n...")
-                // Esto se puede hacer una sola vez fuera del handler si la tabla no cambia
+                // 3) Serializar tabla de servicios 
                 StringBuilder sb = new StringBuilder();
                 for (Map.Entry<String, String[]> e : servicios.entrySet()) {
                     String id = e.getKey();
@@ -226,48 +203,36 @@ public class ServidorPrincipal {
                     sb.append(id).append(",").append(v[0]).append(",").append(v[1]).append(",").append(v[2])
                             .append("\n");
                 }
-                // Quitar el último salto de línea si existe
+                
                 if (sb.length() > 0) {
                     sb.setLength(sb.length() - 1);
                 }
                 byte[] plainTable = sb.toString().getBytes("UTF-8");
 
                 // 4) Cifrar tabla (AES)
-                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding"); // Crear instancia aquí
-                byte[] ivBytes = new byte[cipher.getBlockSize()]; // Usar tamaño del bloque (16 para AES)
-                SecureRandom rnd = SecureRandom.getInstanceStrong(); // Usar generador seguro
+                Cipher cipher = Cipher.getInstance("AES/CBC/PKCS5Padding");
+                byte[] ivBytes = new byte[cipher.getBlockSize()]; 
+                SecureRandom rnd = SecureRandom.getInstanceStrong(); 
                 rnd.nextBytes(ivBytes);
                 IvParameterSpec iv = new IvParameterSpec(ivBytes);
-
-                // System.out.println("------------------------------------------------- " );
-                // System.out.println("Tabla original (antes de cifrar) para " +
-                // sock.getRemoteSocketAddress() + ":");
-                // System.out.println(new String(plainTable, "UTF-8")); // Debug: no mostrar en
-                // producción
 
                 cipher.init(Cipher.ENCRYPT_MODE, kEnc, iv);
                 long tCifradoStart = System.nanoTime();
                 byte[] cipherTable = cipher.doFinal(plainTable);
                 long tCifradoEnd = System.nanoTime();
 
-                // System.out.println("------------------------------------------------------ "
-                // );
-                // System.out.println("Tabla cifrada (Base64) para " +
-                // sock.getRemoteSocketAddress() + ":");
-                // System.out.println(Base64.getEncoder().encodeToString(cipherTable)); // Debug
 
                 System.out.printf("  [Medida] Cifrar tabla para %s: %,d ns%n", sock.getRemoteSocketAddress(),
                         (tCifradoEnd - tCifradoStart));
 
                 // 5) Calcular HMAC( IV_tabla || CIPHERTEXT_tabla )
-                Mac mac = Mac.getInstance("HmacSHA256"); // Crear instancia aquí
+                Mac mac = Mac.getInstance("HmacSHA256");
                 mac.init(kHmac);
-                mac.update(ivBytes); // IV primero
-                mac.update(cipherTable); // Luego texto cifrado
+                mac.update(ivBytes); 
+                mac.update(cipherTable); 
                 byte[] tableHmac = mac.doFinal();
 
                 // Enviar tabla cifrada y autenticada al cliente:
-                // len(iv)‖iv‖len(cipher)‖cipher‖len(hmac)‖hmac
                 out.writeInt(ivBytes.length);
                 out.write(ivBytes);
                 out.writeInt(cipherTable.length);
@@ -275,40 +240,32 @@ public class ServidorPrincipal {
                 out.writeInt(tableHmac.length);
                 out.write(tableHmac);
                 out.flush();
-                // System.out.println("Tabla cifrada enviada a " +
-                // sock.getRemoteSocketAddress());
 
-                // --- FIN DE LA PARTE DE ENVÍO DE TABLA ---
-                // --- INICIO DE RECEPCIÓN Y PROCESAMIENTO DE LA SOLICITUD DEL CLIENTE ---
-
-                // 6) Esperar petición cifrada del cliente (IV_req || CIPHER_req || HMAC_req)
-                // System.out.println("Esperando petición cifrada de " +
-                // sock.getRemoteSocketAddress() + "...");
+                // 6) Esperar petición cifrada del cliente
                 int ivReqLen = in.readInt();
-                if (ivReqLen != 16) { // Validación básica para AES IV
+                if (ivReqLen != 16) { 
                     throw new IOException("Tamaño de IV de petición inválido: " + ivReqLen);
                 }
                 byte[] ivReq = new byte[ivReqLen];
                 in.readFully(ivReq);
 
                 int cReqLen = in.readInt();
-                if (cReqLen > 2048 || cReqLen <= 0) { // Validación básica de tamaño (ajustar según necesidad)
+                if (cReqLen > 2048 || cReqLen <= 0) {
                     throw new IOException("Tamaño de petición cifrada inválido: " + cReqLen);
                 }
                 byte[] cReq = new byte[cReqLen];
                 in.readFully(cReq);
 
                 int hReqLen = in.readInt();
-                if (hReqLen != 32) { // Validación básica para HMAC-SHA256
+                if (hReqLen != 32) {
                     throw new IOException("Tamaño de HMAC de petición inválido: " + hReqLen);
                 }
                 byte[] hReqRcvd = new byte[hReqLen];
                 in.readFully(hReqRcvd);
-                // System.out.println("Petición cifrada recibida de " +
-                // sock.getRemoteSocketAddress());
+
 
                 // 7) Verificar HMAC de la petición: HMAC( IV_req || CIPHER_req )
-                mac.reset(); // Reusar la instancia MAC inicializada con kHmac
+                mac.reset(); 
                 mac.update(ivReq);
                 mac.update(cReq);
                 long tHmacStart = System.nanoTime();
@@ -321,12 +278,8 @@ public class ServidorPrincipal {
                 if (!MessageDigest.isEqual(hReqRcvd, hReqCalc)) {
                     System.err.println(
                             "HMAC de petición inválido de " + sock.getRemoteSocketAddress() + ". Cerrando conexión.");
-                    // sock.close() se llama automáticamente por try-with-resources al salir del
-                    // bloque
-                    return; // Salir del método run()
+                    return; 
                 }
-                // System.out.println("HMAC de la petición verificado para " +
-                // sock.getRemoteSocketAddress());
 
                 // 8) Descifrar petición y extraer serviceId
                 cipher.init(Cipher.DECRYPT_MODE, kEnc, new IvParameterSpec(ivReq)); // Reusar instancia Cipher
@@ -358,23 +311,22 @@ public class ServidorPrincipal {
                     }
 
                     if (portDelegado != -1) {
-                        // Usar try-with-resources para la conexión delegada
                         try (Socket del = new Socket()) {
-                            // Establecer timeout de conexión y lectura para evitar bloqueos indefinidos
-                            del.connect(new InetSocketAddress(ipDelegado, portDelegado), 5000); // Timeout conexión 5
+                         
+                            del.connect(new InetSocketAddress(ipDelegado, portDelegado), 5000); 
                                                                                                 // seg
-                            del.setSoTimeout(10000); // Timeout lectura 10 seg
+                            del.setSoTimeout(10000);
 
                             try (DataOutputStream dout = new DataOutputStream(del.getOutputStream());
                                     DataInputStream din = new DataInputStream(del.getInputStream())) {
-                                // System.out.println("Delegando consulta para '" + serviceId + "' a " +
-                                // ipDelegado + ":" + portDelegado);
-                                dout.writeUTF(serviceId); // Enviar solo el ID al delegado
-                                dout.flush();
-                                respuesta = din.readUTF(); // Leer respuesta del delegado
-                                // System.out.println("Respuesta del delegado para '" + serviceId + "': " +
-                                // respuesta);
+                                
+                            dout.writeUTF(serviceId); 
+                            dout.flush();
+                            respuesta = din.readUTF(); 
+
                             }
+
+
                         } catch (UnknownHostException uhe) {
                             System.err.println("Error delegando a " + ipDelegado + ": Host desconocido.");
                             respuesta = "ERROR: El servidor de consulta para '" + serviceId
@@ -388,27 +340,26 @@ public class ServidorPrincipal {
                                     + ioe.getMessage());
                             respuesta = "ERROR: No se pudo comunicar con el servidor de consulta para '" + serviceId
                                     + "'.";
-                            // ioe.printStackTrace();
+                            
                         }
                     }
-                    // 'respuesta' ya tiene el mensaje de error si portDelegado era inválido
+                   
                 }
 
                 // 10) Enviar respuesta cifrada al cliente original
-                byte[] ivRespBytes = new byte[cipher.getBlockSize()]; // Nuevo IV para la respuesta
+                byte[] ivRespBytes = new byte[cipher.getBlockSize()];
                 rnd.nextBytes(ivRespBytes);
                 IvParameterSpec ivResp = new IvParameterSpec(ivRespBytes);
 
-                cipher.init(Cipher.ENCRYPT_MODE, kEnc, ivResp); // Reusar Cipher
+                cipher.init(Cipher.ENCRYPT_MODE, kEnc, ivResp); 
                 byte[] cResp = cipher.doFinal(respuesta.getBytes("UTF-8"));
 
-                // Calcular HMAC para la respuesta: HMAC( IV_resp || CIPHER_resp )
-                mac.reset(); // Reusar MAC
+                // Calcular HMAC para la respuesta: HMAC
+                mac.reset(); 
                 mac.update(ivRespBytes);
                 mac.update(cResp);
                 byte[] hResp = mac.doFinal();
 
-                // Enviar: len(iv)‖iv‖len(cipher)‖cipher‖len(hmac)‖hmac
                 out.writeInt(ivRespBytes.length);
                 out.write(ivRespBytes);
                 out.writeInt(cResp.length);
@@ -417,54 +368,47 @@ public class ServidorPrincipal {
                 out.write(hResp);
                 out.flush();
 
-                // System.out.println("Respuesta cifrada enviada a " +
-                // sock.getRemoteSocketAddress());
 
-            } catch (EOFException eof) {
-                // Esto es común si el cliente cierra la conexión abruptamente
-                System.err.println(
-                        "Cliente " + sock.getRemoteSocketAddress() + " cerró la conexión inesperadamente (EOF).");
-            } catch (IOException e) {
+            } 
+             catch (IOException e) {
                 System.err.println(
                         "Error de I/O con el cliente " + sock.getRemoteSocketAddress() + ": " + e.getMessage());
-                // e.printStackTrace(); // Descomentar para debug detallado
+                
             } catch (GeneralSecurityException e) {
-                // Capturar errores de Cifrado, Firma, HMAC, Claves, etc.
+                
                 System.err.println(
                         "Error de seguridad con el cliente " + sock.getRemoteSocketAddress() + ": " + e.getMessage());
-                // e.printStackTrace(); // Descomentar para debug detallado
+               
             } catch (Exception e) {
-                // Capturar cualquier otra excepción inesperada
+                
                 System.err.println(
                         "Error inesperado procesando cliente " + sock.getRemoteSocketAddress() + ": " + e.getMessage());
-                e.printStackTrace(); // Mostrar stack trace para errores no previstos
+                e.printStackTrace(); 
             } finally {
-                // El socket y los streams se cierran automáticamente por el try-with-resources
-                // System.out.println("Conexión con " + sock.getRemoteSocketAddress() + "
-                // cerrada.");
+                
             }
-        } // Fin del método run()
-    } // Fin de la clase ClienteHandler
+        } 
+    } 
 
-    // Asumiendo que esta clase auxiliar existe y es correcta
+
     static class ManejadorDeCifrado {
         public static PrivateKey generarLlavePrivadaFromBytes(byte[] keyBytes)
                 throws GeneralSecurityException, IOException {
-            // Implementación para crear PrivateKey desde PKCS#8 bytes
+            
             PKCS8EncodedKeySpec spec = new PKCS8EncodedKeySpec(keyBytes);
-            KeyFactory kf = KeyFactory.getInstance("RSA"); // O el algoritmo que sea
+            KeyFactory kf = KeyFactory.getInstance("RSA"); 
             return kf.generatePrivate(spec);
         }
 
         public static PublicKey generarLlavePublica(String base64Key) throws GeneralSecurityException, IOException {
             byte[] keyBytes = Base64.getDecoder().decode(base64Key);
             X509EncodedKeySpec spec = new X509EncodedKeySpec(keyBytes);
-            KeyFactory kf = KeyFactory.getInstance("RSA"); // O el algoritmo que sea
+            KeyFactory kf = KeyFactory.getInstance("RSA");
             return kf.generatePublic(spec);
         }
 
         public static byte[] generarFirma(PrivateKey signKey, byte[] dataToSign) throws GeneralSecurityException {
-            Signature sig = Signature.getInstance("SHA256withRSA"); // Usar un algoritmo de firma robusto
+            Signature sig = Signature.getInstance("SHA256withRSA"); 
             sig.initSign(signKey);
             sig.update(dataToSign);
             return sig.sign();
@@ -479,28 +423,16 @@ public class ServidorPrincipal {
         }
 
         public static SecretKey[] generarLlavesSimetricas(byte[] sharedSecretZ) throws GeneralSecurityException {
-            // Usar HKDF para derivar llaves de forma segura
-            // Esto es un ejemplo simple, una librería como BouncyCastle o Tink es
-            // recomendada
-            // para implementaciones HKDF robustas.
-            // Aquí un KDF muy básico (NO USAR EN PRODUCCIÓN REAL): Hashear Z para obtener
-            // bytes de llave
+
             MessageDigest sha256 = MessageDigest.getInstance("SHA-256");
-            byte[] derivedKeyMaterial = sha256.digest(sharedSecretZ); // 32 bytes
+            byte[] derivedKeyMaterial = sha256.digest(sharedSecretZ); 
 
-            // Dividir el material derivado para K_enc (16 bytes) y K_hmac (16 bytes)
-            // Asegurarse que K_enc y K_hmac no sean idénticos o relacionados trivialmente
-            byte[] keyEncBytes = Arrays.copyOfRange(derivedKeyMaterial, 0, 16); // AES-128
-            byte[] keyHmacBytes = Arrays.copyOfRange(derivedKeyMaterial, 16, 32); // HMAC-SHA256 necesita al menos 32
-                                                                                  // bytes idealmente
-
+            byte[] keyEncBytes = Arrays.copyOfRange(derivedKeyMaterial, 0, 16); 
+            byte[] keyHmacBytes = Arrays.copyOfRange(derivedKeyMaterial, 16, 32); 
+                                                                                  
             SecretKey kEnc = new SecretKeySpec(keyEncBytes, "AES");
-
-            // Para HMAC-SHA256, la llave puede ser más larga (e.g., 32 bytes)
-            // Podríamos derivar más material o usar los bytes restantes. Por simplicidad:
             SecretKey kHmac = new SecretKeySpec(keyHmacBytes, "HmacSHA256");
 
-            // Limpiar arrays intermedios si es posible/necesario
             Arrays.fill(derivedKeyMaterial, (byte) 0);
             Arrays.fill(keyEncBytes, (byte) 0);
             Arrays.fill(keyHmacBytes, (byte) 0);
@@ -509,4 +441,4 @@ public class ServidorPrincipal {
         }
     }
 
-} // Fin de la clase ServidorPrincipal
+}

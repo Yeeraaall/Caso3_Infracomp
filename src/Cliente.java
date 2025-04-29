@@ -91,7 +91,6 @@ public class Cliente {
                 System.out.println("Opción no válida.");
             }
         } catch (Exception e) {
-            // Captura errores generales que puedan ocurrir en los escenarios
             System.err.println("Ocurrió un error durante la ejecución del escenario: " + e.getMessage());
             e.printStackTrace();
         } finally {
@@ -113,10 +112,10 @@ public class Cliente {
             try (DataInputStream in = new DataInputStream(sock.getInputStream());
                     DataOutputStream out = new DataOutputStream(sock.getOutputStream())) {
 
-                // Llamar al método que maneja la comunicación segura
+                
                 enviarSolicitud(in, out, serviceId, serverPubRSA);
 
-            } // Streams se cierran aquí
+            } 
         } catch (ConnectException ce) {
             System.err.println("Error de conexión: El servidor en " + HOST + ":" + PORT
                     + " no está disponible o rechazó la conexión.");
@@ -315,8 +314,6 @@ public class Cliente {
 
 
         // --- Recepción y Verificación de la Tabla de Servicios ---
-
-        
         int ivTableLen = in.readInt();
         if (ivTableLen != 16)
             throw new IOException("Tamaño IV tabla inválido: " + ivTableLen);
